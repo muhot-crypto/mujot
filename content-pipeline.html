@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Content Creation Pipeline</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080b0f;
+    --surface: #0e1318;
+    --border: #1a2330;
+    --accent1: #00e5ff;
+    --accent2: #ff6b35;
+    --accent3: #7fff6b;
+    --accent4: #bf6bff;
+    --accent5: #ffde6b;
+    --accent6: #ff6b9d;
+    --text: #e8edf2;
+    --muted: #5a6a7a;
+    --card: #0d1520;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 64px;
+    animation: fadeDown 0.8s ease both;
+  }
+
+  .header-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent1);
+    margin-bottom: 16px;
+    opacity: 0.8;
+  }
+
+  .header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(28px, 5vw, 48px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    margin-bottom: 16px;
+  }
+
+  .header h1 span {
+    color: var(--accent1);
+  }
+
+  .header p {
+    font-size: 13px;
+    color: var(--muted);
+    max-width: 500px;
+    margin: 0 auto;
+    line-height: 1.7;
+  }
+
+  /* Pipeline */
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* Step card */
+  .step {
+    position: relative;
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  .step.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .step-inner {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 0;
+    cursor: pointer;
+  }
+
+  /* Left rail */
+  .step-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .step-number {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 2;
+    background: var(--bg);
+  }
+
+  .step-line {
+    width: 2px;
+    flex: 1;
+    min-height: 32px;
+    background: var(--border);
+    transition: background 0.3s ease;
+  }
+
+  .step:last-child .step-line { display: none; }
+
+  /* Card body */
+  .step-body {
+    padding: 0 0 40px 20px;
+  }
+
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 0;
+    padding: 8px 0;
+    margin-top: 4px;
+  }
+
+  .step-emoji {
+    font-size: 20px;
+  }
+
+  .step-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  .step-time {
+    margin-left: auto;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid;
+    opacity: 0.7;
+    white-space: nowrap;
+  }
+
+  .step-subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+    margin-bottom: 0;
+    line-height: 1.5;
+    font-style: italic;
+  }
+
+  /* Expandable content */
+  .step-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .step.open .step-content {
+    max-height: 800px;
+  }
+
+  .step-content-inner {
+    padding-top: 16px;
+  }
+
+  /* Tools grid */
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .tool-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    transition: all 0.2s ease;
+  }
+
+  .tool-card:hover {
+    border-color: currentColor;
+    transform: translateY(-2px);
+  }
+
+  .tool-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .tool-desc {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .tool-tag {
+    display: inline-block;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-top: 6px;
+    opacity: 0.8;
+  }
+
+  /* Instructions */
+  .instructions {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-top: 8px;
+  }
+
+  .instructions-title {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .instruction-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .instruction-list li {
+    font-size: 12px;
+    line-height: 1.6;
+    color: #b0bec8;
+    padding-left: 18px;
+    position: relative;
+  }
+
+  .instruction-list li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: currentColor;
+    font-size: 11px;
+  }
+
+  .instruction-list li strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* Prompt box */
+  .prompt-box {
+    background: #060a0e;
+    border: 1px solid var(--border);
+    border-left: 3px solid;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-top: 12px;
+    font-size: 11px;
+    line-height: 1.8;
+    color: #8899aa;
+  }
+
+  .prompt-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    opacity: 0.6;
+  }
+
+  /* Expand hint */
+  .expand-hint {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.2s;
+  }
+
+  .step:hover .expand-hint { color: var(--text); }
+
+  .expand-arrow {
+    transition: transform 0.3s ease;
+    display: inline-block;
+  }
+
+  .step.open .expand-arrow { transform: rotate(90deg); }
+
+  /* Color variants */
+  .s1 { --c: var(--accent1); }
+  .s2 { --c: var(--accent2); }
+  .s3 { --c: var(--accent3); }
+  .s4 { --c: var(--accent4); }
+  .s5 { --c: var(--accent5); }
+  .s6 { --c: var(--accent6); }
+  .s7 { --c: var(--accent1); }
+
+  .step-number { border-color: var(--c); color: var(--c); }
+  .step-title { color: var(--c); }
+  .step-time { border-color: var(--c); color: var(--c); }
+  .step.open .step-line { background: var(--c); opacity: 0.3; }
+  .instruction-list li::before { color: var(--c); }
+  .prompt-box { border-left-color: var(--c); }
+
+  .tool-tag { background: color-mix(in srgb, var(--c) 15%, transparent); color: var(--c); }
+  .tool-card:hover { border-color: var(--c); }
+
+  /* Summary bar */
+  .summary {
+    margin-top: 48px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    animation: fadeUp 0.8s ease 0.4s both;
+  }
+
+  .summary-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+
+  .time-blocks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+  }
+
+  .time-block {
+    text-align: center;
+    padding: 14px;
+    background: var(--card);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  .time-block .time {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .time-block .label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .total-bar {
+    margin-top: 16px;
+    padding: 16px 20px;
+    background: color-mix(in srgb, var(--accent1) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent1) 30%, transparent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .total-bar .label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .total-bar .value {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--accent1);
+  }
+
+  /* Animations */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Mobile */
+  @media (max-width: 540px) {
+    .step-inner { grid-template-columns: 44px 1fr; }
+    .step-number { width: 36px; height: 36px; font-size: 12px; }
+    .step-time { display: none; }
+    .tools-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <div class="header">
+    <div class="header-label">Daily SOP — Faceless AI Content</div>
+    <h1>From Zero to<br><span>Upload-Ready</span></h1>
+    <p>Click each step to expand the full instructions, tools, and prompts. Follow in order — every time.</p>
+  </div>
+
+  <div class="pipeline">
+
+    <!-- STEP 1 -->
+    <div class="step s1" onclick="toggle(this)">
+      <div class="step-inner">
+        <div class="step-rail">
+          <div class="step-number">01</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-header">
+            <span class="step-emoji">🔍</span>
+            <span class="step-title">Find Your Topic</span>
+            <span class="step-time">~10 min</span>
+          </div>
+          <div class="step-subtitle">Where to look. What to look for. How to know it's worth making.</div>
+          <div class="expand-hint"><span class="expand-arrow">▶</span> tap to expand</div>
+          <div class="step-content">
+            <div class="step-content-inner">
+              <div class="tools-grid">
+                <div class="tool-card">
+                  <div class="tool-name">Google Trends</div>
+                  <div class="tool-desc">Search any AI topic. Filter to United States, past 7 days. If it's rising — it's timely.</div>
+                  <div class="tool-tag">free</div>
+                </div>
+                <div class="tool-card">
+                  <div class="tool-name">TrendTok</div>
+                  <div class="tool-desc">Shows what's trending on TikTok US right now. Check the "Tech" and "Education" categories daily.</div>
+                  <div class="tool-tag">paid</div>
+                </div>
+                <div class="tool-card">
+                  <div class="tool-name">Reddit</div>
+                  <div class="tool-desc">Go to r/ChatGPT, r/artificial, r/OutOfTheLoop. Top posts = what normal people are confused about.</div>
+                  <div class="tool-tag">free</div>
+                </div>
+                <div class="tool-card">
+                  <div class="tool-name">YouTube Search</div>
+                  <div class="tool-desc">Search an AI topic. Sort by "This week." Low view counts on recent videos = underserved topic.</div>
+                  <div class="tool-tag">free</div>
+                </div>
+              </div>
+              <div class="instructions">
+                <div class="instructions-title">Step-by-step</div>
+                <ul class="instruction-list">
+                  <li>Open Google Trends → search an AI term you heard recently → set to <strong>United States / Past 7 days</strong></li>
+                  <li>If the graph is rising or spiking, the topic is alive. If it's flat, skip it.</li>
+                  <li>Cross-check on Reddit: search the same topic in r/ChatGPT. If people are asking questions about it, those ARE your video angles.</li>
+                  <li>Pick ONE topic. Write it as a single plain question a non-tech person would ask. Example: <strong>"Why does ChatGPT sometimes just make things up?"</strong></li>
+                  <li>That question = your video title and your script goal.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="step s2" onclick="toggle(this)">
+      <div class="step-inner">
+        <div class="step-rail">
+          <div class="step-number">02</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-header">
+            <span class="step-emoji">🧠</span>
+            <span class="step-title">Research It Simply</span>
+            <span class="step-time">~10 min</span>
+          </div>
+          <div class="step-subtitle">Get the facts fast. No rabbit holes. Just what you need to explain it clearly.</div>
+          <div class="expand-hint"><span class="expand-arrow">▶</span> tap to expand</div>
+          <div class="step-content">
+            <div class="step-content-inner">
+              <div class="tools-grid">
+                <div class="tool-card">
+                  <div class="tool-name">Perplexity AI</div>
+                  <div class="tool-desc">Ask your question. It gives sourced answers in plain language. Much faster than Googling.</div>
+                  <div class="tool-tag">free / pro</div>
+                </div>
+                <div class="tool-card">
+                  <div class="tool-name">Claude / ChatGPT</div>
+                  <div class="tool-desc">Use to simplify what Perplexity gives you. Ask "explain this like I'm 15 years old."</div>
+                  <div class="tool-tag">free / pro</div>
+                </div>
+              </div>
+              <div class="instructions">
+                <div class="instructions-title">Step-by-step</div>
+                <ul class="instruction-list">
+                  <li>Go to <strong>perplexity.ai</strong> → paste your question exactly as a curious person would ask it</li>
+                  <li>Read the answer. Highlight or copy the 3–5 most interesting facts or moments</li>
+                  <li>If something is still confusing, paste THAT sentence into Claude and ask it to simplify</li>
+                  <li>You don't need to understand every technical detail — you need to understand it well enough to <strong>explain the why and the so-what</strong></li>
+                  <li>Save your simplified notes in one place (Notes app, Notion, anywhere)</li>
+                </ul>
+              </div>
+              <div class="prompt-box">
+                <div class="prompt-label">Perplexity prompt template</div>
+                Explain [TOPIC] in simple terms. What is it, why do people care about it, and how does it affect regular people's lives? Keep it factual and easy to understand. No jargon.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="step s3" onclick="toggle(this)">
+      <div class="step-inner">
+        <div class="step-rail">
+          <div class="step-number">03</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-header">
+            <span class="step-emoji">✍️</span>
+            <span class="step-title">Write the Script</span>
+            <span class="step-time">~15 min</span>
+          </div>
+          <div class="step-subtitle">AI writes the first draft. You make it sound human. Two columns: what's said, what's shown.</div>
+          <div class="expand-hint"><span class="expand-arrow">▶</span> tap to expand</div>
+          <div class="step-content">
+            <div class="step-content-inner">
+              <div class="tools-grid">
+                <div class="tool-card">
+                  <div class="tool-name">Claude</div>
+                  <div class="tool-desc">Best for writing in a natural, conversational voice. Paste your research notes and use the prompt below.</div>
+                  <div class="tool-tag">recommended</div>
+                </div>
+                <div class="tool-card">
+                  <div class="tool-name">ChatGPT</div>
+                  <div class="tool-desc">Also works well. Use the same prompt structure.</div>
+                  <div class="tool-tag">alternative</div>
+                </div>
+              </div>
+              <div class="instructions">
+                <div class="instructions-title">Script structure — every video</div>
+                <ul class="instruction-list">
+                  <li><strong>Hook (0–3 sec):</strong> One shocking or curious statement. No intro. No "hey guys." Just the hook.</li>
+                  <li><strong>Relate (3–10 sec):</strong> Connect it to something the viewer already knows or experiences</li>
+                  <li><strong>Explain (10–40 sec):</strong> The actual simple explanation. One idea at a time.</li>
+                  <li><strong>Real example (40–55 sec):</strong> Show it happening in real life. Concrete. Specific.</li>
+                  <li><strong>Takeaway (55–60 sec):</strong> What should they do, think, or feel differently now?</li>
+                  <li>For each line, write a <strong>VISUAL NOTE</strong> next to it — what should be on screen when this is said</li>
+                </ul>
+              </div>
+              <div class="prompt-box">
+                <div class="prompt-label">Claude script prompt — save and reuse this</div>
+                You are a scriptwriter for a faceless educational TikTok/YouTube channel targeting everyday Americans with no tech background. Write a 60-second script about [TOPIC] using these notes: [PASTE YOUR RESEARCH]. Format it as two columns: VOICEOVER and VISUAL NOTE (what should appear on screen). Tone: curious friend explaining something over coffee. No jargon. Start with a hook — a surprising or relatable statement, no intro. End with a clear takeaway.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="step s4" onclick="toggle(this)">
+      <div class="step-inner">
+        <div class="step-rail">
+          <div class="step-number">04</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-header">
+            <span class="step-emoji">🎙️</span>
+            <span class="step-title">Generate Voiceover</span>
+            <span class="step-time">~5 min</span>
+          </div>
+          <div class="step-subtitle">Pick a consistent US voice. Paste script. Download audio. Done.</div>
+          <div class="expand-hint"><span class="expand-arrow">▶</span> tap to expand</div>
+          <div class="step-content">
+            <div class="step-content-inner">
+              <div class="tools-grid">
+                <div class="tool-card">
+                  <div class="tool-name">ElevenLabs</div>
+                  <div class="tool-desc">Best quality. Pick a US voice. "Rachel" or "Adam" work well for documentary tone. Sounds very natural.</div>
+                  <div class="tool-tag">recommended</div>
+                </div>
+                <div class="tool-card">
+                  <div class="tool-name">Murf AI</div>
+                  <div class="tool-desc">More narrator-style voices. Great for a "How It's Made" documentary feel.</div>
+                  <div class="tool-tag">alternative</div>
+                </div>
+              </div>
+              <div class="instructions">
+                <div class="instructions-title">Step-by-step</div>
+                <ul class="instruction-list">
+                  <li>Go to <strong>elevenlabs.io</strong> → Speech Synthesis</li>
+                  <li>Paste ONLY the voiceover column from your script (not the visual notes)</li>
+                  <li>Pick your voice. Stick to the <strong>same voice every video</strong> — it becomes your brand signature</li>
+                  <li>Set stability to ~50%, similarity to ~75%. Generate.</li>
+                  <li>Listen once. If a word sounds wrong, manually retype it phonetically (e.g. "GIF" → "JIF")</li>
+                  <li>Download as MP3. Label it <strong>VOICEOVER_[topic]_[date].mp3</strong></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 5 -->
+    <div class="step s5" onclick="toggle(this)">
+      <div class="step-inner">
+        <div class="step-rail">
+          <div class="step-number">05</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-header">
+            <span class="step-emoji">🎬</span>
+            <span class="step-title">Gather Visuals</span>
+            <span class="step-time">~25 min</span>
+          </div>
+          <div class="step-subtitle">Match every visual note from your script to a clip or image. Three sources, in order of preference.</div>
+          <div class="expand-hint"><span class="expand-arrow">▶</span> tap to expand</div>
+          <div class="step-content">
+            <div class="step-content-inner">
+              <div class="tools-grid">
+                <div class="tool-card">
+                  <div class="tool-name">Storyblocks</div>
+                  <div class="tool-desc">Flat monthly fee, unlimited stock footage. Search everyday scenes: people on phones, offices, doctors, grocery stores.</div>
+                  <div class="tool-tag">first choice</div>
+                </div>
+                <div class="tool-card">
+                  <div class="tool-name">Pexels / Pixabay</div>
+                  <div class="tool-desc">100% free stock footage. Not as wide a library but covers most basics. Always try here first before paying.</div>
+                  <div class="tool-tag">free</div>
+                </div>
+                <div class="tool-card">
+                  <div class="tool-name">Runway ML</div>
+                  <div class="tool-desc">Generate short AI video clips for abstract things stock footage can't cover. "Data flowing through a network", etc.</div>
+                  <div class="tool-tag">for abstract</div>
+                </div>
+                <div class="tool-card">
+                  <div class="tool-name">Canva AI</div>
+                  <div class="tool-desc">Generate simple infographics, diagrams, title cards. Very fast. Good for "stats" or "timeline" visuals.</div>
+                  <div class="tool-tag">for graphics</div>
+                </div>
+              </div>
+              <div class="instructions">
+                <div class="instructions-title">Step-by-step</div>
+                <ul class="instruction-list">
+                  <li>Open your script. Go line by line through the <strong>VISUAL NOTE column</strong></li>
+                  <li>For each note: search Pexels first (free). If nothing fits, try Storyblocks.</li>
+                  <li>For abstract tech concepts (AI, data, algorithms): use Runway to generate a 3–5 second clip with a text prompt</li>
+                  <li>For any "statistic" or "comparison" moment: open Canva, use their AI to make a quick graphic</li>
+                  <li>Download everything into one folder labeled <strong>VISUALS_[topic]</strong></li>
+                  <li>You need roughly <strong>one clip per 5–8 seconds</strong> of voiceover</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 6 -->
+    <div class="step s6" onclick="toggle(this)">
+      <div class="step-inner">
+        <div class="step-rail">
+          <div class="step-number">06</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-header">
+            <span class="step-emoji">✂️</span>
+            <span class="step-title">Edit & Assemble</span>
+            <span class="step-time">~20 min</span>
+          </div>
+          <div class="step-subtitle">Drop voiceover in. Lay visuals on top. Add captions. Add music. Export.</div>
+          <div class="expand-hint"><span class="expand-arrow">▶</span> tap to expand</div>
+          <div class="step-content">
+            <div class="step-content-inner">
+              <div class="tools-grid">
+                <div class="tool-card">
+                  <div class="tool-name">CapCut</div>
+                  <div class="tool-desc">Free. Made for TikTok. Auto-captions, auto-cut on silence, built-in music. Fastest path to a finished short video.</div>
+                  <div class="tool-tag">tiktok / shorts</div>
+                </div>
+                <div class="tool-card">
+                  <div class="tool-name">Descript</div>
+                  <div class="tool-desc">Edit by editing text transcript. Best if you ever need to re-order sections or make precise cuts around the voiceover.</div>
+                  <div class="tool-tag">precision</div>
+                </div>
+                <div class="tool-card">
+                  <div class="tool-name">OpusClip</div>
+                  <div class="tool-desc">If you make a longer YouTube video, paste it here and it auto-cuts it into 3–5 TikTok clips. One video becomes many.</div>
+                  <div class="tool-tag">repurpose</div>
+                </div>
+              </div>
+              <div class="instructions">
+                <div class="instructions-title">Assembly order in CapCut</div>
+                <ul class="instruction-list">
+                  <li><strong>Import voiceover MP3 first</strong> — it becomes your timeline backbone</li>
+                  <li>Drag video clips onto the timeline aligned to what's being said at that moment</li>
+                  <li>Use <strong>Auto Captions</strong> — CapCut generates them in seconds. Edit any wrong words.</li>
+                  <li>Add background music at <strong>5–10% volume</strong> — just enough to fill silence. Never louder than the voice.</li>
+                  <li>Add a simple text title card at the very start (0.5 seconds) — one line, big font, the hook in text form</li>
+                  <li>Export at <strong>1080p, 60fps</strong> for TikTok. YouTube Shorts same. For full YouTube: 1080p minimum, 4K if possible.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 7 -->
+    <div class="step s7" onclick="toggle(this)">
+      <div class="step-inner">
+        <div class="step-rail">
+          <div class="step-number">07</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-header">
+            <span class="step-emoji">🚀</span>
+            <span class="step-title">Thumbnail, Title & Upload</span>
+            <span class="step-time">~15 min</span>
+          </div>
+          <div class="step-subtitle">The thumbnail is the ad. The title is the hook. Both matter as much as the video itself.</div>
+          <div class="expand-hint"><span class="expand-arrow">▶</span> tap to expand</div>
+          <div class="step-content">
+            <div class="step-content-inner">
+              <div class="tools-grid">
+                <div class="tool-card">
+                  <div class="tool-name">Canva AI</div>
+                  <div class="tool-desc">Generate YouTube thumbnail from a text prompt. Use bold text, high contrast, one clear visual focus.</div>
+                  <div class="tool-tag">thumbnail</div>
+                </div>
+                <div class="tool-card">
+                  <div class="tool-name">VidIQ</div>
+                  <div class="tool-desc">Suggests YouTube titles optimized for US search. Shows what keywords people are actually searching.</div>
+                  <div class="tool-tag">youtube seo</div>
+                </div>
+                <div class="tool-card">
+                  <div class="tool-name">Buffer</div>
+                  <div class="tool-desc">Schedule TikTok + YouTube posts in advance. Set to auto-publish at 7pm EST (peak US time).</div>
+                  <div class="tool-tag">scheduling</div>
+                </div>
+              </div>
+              <div class="instructions">
+                <div class="instructions-title">Upload checklist</div>
+                <ul class="instruction-list">
+                  <li><strong>Title:</strong> Paste your hook question into VidIQ. Pick the version with highest search volume. Keep it under 60 characters.</li>
+                  <li><strong>Thumbnail:</strong> One image, one bold text line (4 words max), high contrast. Test: can you read it at thumbnail size?</li>
+                  <li><strong>Description:</strong> First 2 lines matter most (shown before "read more"). Put your key phrase there. Ask Claude to write it.</li>
+                  <li><strong>Tags / Hashtags:</strong> TikTok: 3–5 hashtags max. YouTube: 8–10 relevant tags. Use VidIQ suggestions.</li>
+                  <li><strong>Schedule:</strong> Upload to Buffer → set to <strong>7:00pm EST</strong> for TikTok, <strong>12:00pm EST</strong> for YouTube</li>
+                  <li>Make sure <strong>NordVPN is connected to your US server</strong> before opening any of these apps</li>
+                </ul>
+              </div>
+              <div class="prompt-box">
+                <div class="prompt-label">Claude description prompt</div>
+                Write a YouTube video description for a video titled "[YOUR TITLE]". The audience is everyday Americans with no tech background. First 2 lines should hook them and include the main keyword. Then a 3-sentence summary. Keep total length under 150 words. No emojis.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end pipeline -->
+
+  <!-- Summary -->
+  <div class="summary">
+    <div class="summary-title">⏱ Daily Time Budget</div>
+    <div class="time-blocks">
+      <div class="time-block">
+        <span class="time" style="color:var(--accent1)">10m</span>
+        <span class="label">Find Topic</span>
+      </div>
+      <div class="time-block">
+        <span class="time" style="color:var(--accent2)">10m</span>
+        <span class="label">Research</span>
+      </div>
+      <div class="time-block">
+        <span class="time" style="color:var(--accent3)">15m</span>
+        <span class="label">Script</span>
+      </div>
+      <div class="time-block">
+        <span class="time" style="color:var(--accent4)">5m</span>
+        <span class="label">Voiceover</span>
+      </div>
+      <div class="time-block">
+        <span class="time" style="color:var(--accent5)">25m</span>
+        <span class="label">Visuals</span>
+      </div>
+      <div class="time-block">
+        <span class="time" style="color:var(--accent6)">20m</span>
+        <span class="label">Edit</span>
+      </div>
+      <div class="time-block">
+        <span class="time" style="color:var(--accent1)">15m</span>
+        <span class="label">Upload</span>
+      </div>
+    </div>
+    <div class="total-bar">
+      <span class="label">Total time per video</span>
+      <span class="value">~1 hr 40 min</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function toggle(el) {
+    el.classList.toggle('open');
+  }
+
+  // Intersection observer for scroll animations
+  const steps = document.querySelectorAll('.step');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => {
+          entry.target.classList.add('visible');
+        }, 60);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  steps.forEach(step => observer.observe(step));
+
+  // Open first step by default
+  setTimeout(() => steps[0]?.classList.add('open'), 600);
+</script>
+</body>
+</html>
